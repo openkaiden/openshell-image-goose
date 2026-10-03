@@ -15,22 +15,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-name: build and publish next image
+version: 2
+updates:
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      # check at 3am UTC
+      time: "03:00"
 
-permissions:
-  contents: read
-  packages: write
-  attestations: write
-  id-token: write
-
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-
-jobs:
-  build:
-    uses: openkaiden/gh-actions/.github/workflows/oci-image.yaml@da905b7ca937b8cfe1b2efc9e0310c6635d25732 # main
-    with:
-      push: true
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      # check at 3am UTC
+      time: "03:00"

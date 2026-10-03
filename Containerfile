@@ -15,17 +15,23 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-ARG BASE_IMAGE=ghcr.io/nvidia/openshell-community/sandboxes/base@sha256:aeef1c63f00e2913ea002ccb3aaf925f338b5c5d70e63576f0d95c16a138044e
-FROM ${BASE_IMAGE}
+# ghcr.io/openkaiden/openshell-image-base-builder:next
+FROM ghcr.io/openkaiden/openshell-image-base-builder@sha256:27c5cb3411afcd4950ec89308425d54685a7c07b8de094260e8e92c0c9c9e43e AS builder
+ARG GOOSE_VERSION=v1.53.0
 
-USER root
+# Install goose inside the root filesystem
+# The musl variant is self-contained: it needs no library from the root filesystem
+RUN set -eux; \
+    dnf install -y bzip2; \
+    cd /tmp; \
+    curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh \
+      | GOOSE_VERSION="${GOOSE_VERSION}" GOOSE_LINUX_VARIANT=musl GOOSE_BIN_DIR=/mnt/rootfs/usr/local/bin CONFIGURE=false bash; \
+    # the binary keeps the owner it has in the release archive
+    chown root:root /mnt/rootfs/usr/local/bin/goose
 
-RUN cd /tmp && curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | GOOSE_VERSION=v1.45.0 GOOSE_BIN_DIR=/usr/local/bin CONFIGURE=false bash
-
-RUN mkdir -p /sandbox/.config/goose && \
-    echo 'GOOSE_TELEMETRY_ENABLED: false' > /sandbox/.config/goose/config.yaml && \
-    chown -R sandbox:sandbox /sandbox/.config/goose
-
-USER sandbox
-
-ENTRYPOINT ["/bin/bash"]
+# Now create our final image with reduced layers
+FROM scratch
+COPY --from=builder /mnt/rootfs/ /
+# Do not send usage data
+ENV GOOSE_TELEMETRY_ENABLED=false
+CMD ["goose"]
